@@ -1,9 +1,8 @@
 services:
   gdcm-map:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
-    image: gdcm-map:latest
+    # 镜像由 GitHub Actions 构建并推送到 GHCR，服务器仅需 docker pull，无需本地编译
+    image: ghcr.io/w311ang/gdcm-map:latest
+    pull_policy: always
     container_name: gdcm-map
     restart: unless-stopped
     environment:

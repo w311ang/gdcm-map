@@ -13,7 +13,13 @@
 - `caddy-tilebounds/`：自定义 Go 编写的 Caddy HTTP 处理模块源码，用于按瓦片坐标做地理区域校验
 - `deploy/`：Docker 部署相关文件
 
-## 部署（Docker）
+## 镜像构建（GitHub Actions）
+
+推送到 `main` 分支（涉及 `gdcm-map/`、`caddy-tilebounds/`、`deploy/Dockerfile` 等路径）会自动触发 `.github/workflows/docker-build.yml`，构建镜像并推送到 GitHub Container Registry：`ghcr.io/w311ang/gdcm-map:latest`。
+
+**首次使用前，需要手动将该 GHCR 包设为 Public**（否则服务器 `docker pull` 时会因未登录而失败）：仓库页面 → 右侧 Packages → 进入 `gdcm-map` 包 → Package settings → Change visibility → Public。
+
+## 部署（Docker，服务器直接拉取预构建镜像）
 
 1. 准备 Google Maps API Key。
 2. 进入 `deploy/` 目录，复制 `.env.example` 为 `.env` 并填入真实 Key：
@@ -24,10 +30,11 @@
    # 编辑 .env，填入 GOOGLE_MAPS_API_KEY
    ```
 
-3. 构建并启动容器（默认只绑定到 `127.0.0.1:12856`，不直接暴露公网）：
+3. 拉取镜像并启动容器（默认只绑定到 `127.0.0.1:12856`，不直接暴露公网；服务器本地不再需要编译 Go/Caddy）：
 
    ```bash
-   docker compose up -d --build
+   docker compose pull
+   docker compose up -d
    ```
 
 4. 在宿主机上已有的 Caddy 中加入反向代理站点块（参考 `deploy/host-caddy-snippet.conf`），换成你自己的域名后 reload：
