@@ -372,6 +372,11 @@
 
     // ===== 3. 设备朝向监听（更新箭头旋转角度）=====
     let orientationListenerActive = false;
+    let kompasInstance;
+    // 罗盘朝向计算改用现成的 kompas 库（github.com/pirxpilot/kompas），而非手写实现：
+    // 它内置了对 alpha/beta/gamma 的倾斜补偿算法（手机竖拿时也能正确计算方向），
+    // 并且已在社区中被广泛验证，比自行实现更可靠，避免箭头计算出错或抽搐。
+    const kompasModulePromise = import("https://esm.sh/kompas");
 
     // 朝向监听开启后，将定位点从圆圈切换为可旋转箭头
     function activateArrowMarker() {
@@ -389,39 +394,11 @@
       svg.style.transform = `rotate(${screenHeading}deg)`;
     }
 
-    // 完整的倾斜补偿罗盘朝向计算（W3C DeviceOrientation 规范附带公式）。
-    // 简单的 "360 - alpha" 只在手机水平放置（屏幕朝上平放）时准确；
-    // 实际使用中手机是竖着拿在手上查看地图，beta/gamma 不接近 0，
-    // 仅用 alpha 计算会在某些倾斜角度下导致朝向整体反向或错位，
-    // 这正是"箭头有时刚好相反"的根本原因，必须联合 alpha/beta/gamma 三轴计算。
-    function computeTiltCompensatedHeading(alpha, beta, gamma) {
-      const alphaRad = alpha * (Math.PI / 180);
-      const betaRad = beta * (Math.PI / 180);
-      const gammaRad = gamma * (Math.PI / 180);
-
-      const cA = Math.cos(alphaRad), sA = Math.sin(alphaRad);
-      const cB = Math.cos(betaRad), sB = Math.sin(betaRad);
-      const cG = Math.cos(gammaRad), sG = Math.sin(gammaRad);
-
-      const vx = -cA * sG - sA * sB * cG;
-      const vy = -sA * sG + cA * sB * cG;
-
-      let heading = Math.atan2(vx, vy) * (180 / Math.PI);
-      return (heading + 360) % 360;
-    }
-
-    function handleOrientation(event) {
-      let heading;
-      if (event.webkitCompassHeading !== undefined) {
-        // iOS Safari：系统已做倾斜补偿，直接是相对正北的角度
-        heading = event.webkitCompassHeading;
-      } else if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
-        // Android Chrome：需要用 alpha/beta/gamma 三轴联合计算，做倾斜补偿
-        heading = computeTiltCompensatedHeading(event.alpha, event.beta, event.gamma);
-      }
-      if (heading !== undefined) {
-        updateHeading(heading);
-      }
+    async function startKompasWatch() {
+      const { default: kompas } = await kompasModulePromise;
+      kompasInstance = kompas();
+      kompasInstance.on("heading", updateHeading);
+      kompasInstance.watch();
     }
 
     function requestOrientationPermission() {
@@ -432,24 +409,19 @@
         DeviceOrientationEvent.requestPermission()
           .then(permissionState => {
             if (permissionState === "granted") {
-              window.addEventListener("deviceorientation", handleOrientation, true);
               orientationListenerActive = true;
               activateArrowMarker();
+              startKompasWatch();
             } else {
               alert("未授权访问设备朝向");
             }
           })
           .catch(console.error);
-      } else if ("ondeviceorientationabsolute" in window) {
-        // Android Chrome
-        window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+      } else if (typeof DeviceOrientationEvent !== "undefined" || "ondeviceorientationabsolute" in window) {
+        // Android Chrome / 其他支持设备方向的浏览器
         orientationListenerActive = true;
         activateArrowMarker();
-      } else if (typeof DeviceOrientationEvent !== "undefined") {
-        // 其他浏览器
-        window.addEventListener("deviceorientation", handleOrientation, true);
-        orientationListenerActive = true;
-        activateArrowMarker();
+        startKompasWatch();
       } else {
         alert("当前设备/浏览器不支持方向传感器");
       }

@@ -1,6 +1,8 @@
 // 极简 Service Worker：仅为实现 PWA 可安装/离线外壳缓存，
 // 不缓存 Google Maps 反代相关请求（瓦片、JS、静态资源），
 // 避免地图内容被过期/离线数据污染。
+// 罗盘朝向库 kompas（经 esm.sh 加载）属于版本锁定的静态脚本，内容不会变化，
+// 缓存它能加快二次加载、支持弱网/离线场景下"开启朝向"功能，因此纳入外壳缓存范围。
 const CACHE_NAME = "campus-map-shell-v1";
 const SHELL_ASSETS = [
   "./",
@@ -8,7 +10,8 @@ const SHELL_ASSETS = [
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
-  "./icons/icon-512-maskable.png"
+  "./icons/icon-512-maskable.png",
+  "https://esm.sh/kompas"
 ];
 
 self.addEventListener("install", (event) => {
