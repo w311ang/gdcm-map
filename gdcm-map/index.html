@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google 卫星地图 - 实时朝向</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#4285F4">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="校园地图">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+    .map-control {
+      position: absolute;
+      z-index: 10;
+      padding: 10px 16px;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .map-control:disabled {
+      cursor: wait;
+      opacity: 0.7;
+    }
+    #orientation-btn {
+      top: 58px;
+      left: 12px;
+      background: #4285F4;
+    }
+    #locate-btn {
+      top: 12px;
+      left: 12px;
+      background: #34A853;
+    }
+    /* #debug-panel {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 10;
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #debug-panel input {
+      width: 140px;
+      padding: 4px 6px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    #debug-panel button {
+      padding: 6px 10px;
+      background: #673AB7;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+    } */
+  </style>
+</head>
+<body>
+
+  <button id="locate-btn" class="map-control" onclick="locateUser()">定位到我</button>
+  <button id="orientation-btn" class="map-control" onclick="requestOrientationPermission()">开启朝向</button>
+  <!--
+  <div id="debug-panel">
+    <label>纬度 lat: <input id="debug-lat" type="text" placeholder="23.7400"></label>
+    <label>经度 lng: <input id="debug-lng" type="text" placeholder="113.1022"></label>
+    <button onclick="jumpToDebugCoord()">跳转 / 打点</button>
+  </div>
+  -->
+  <div id="map"></div>
+
+  <script>
+    // ===== 1. 异步加载 Google Maps API（官方推荐写法）=====
+    (g => {
+      var h, a, k, p = "The Google Maps JavaScript API",
+        c = "google", l = "importLibrary", q = "__ib__",
+        m = document, b = window;
+      b = b[c] || (b[c] = {});
+      var d = b.maps || (b.maps = {}), r = new Set, e = new URLSearchParams,
+        u = () => h || (h = new Promise(async (f, n) => {
+          await (a = m.createElement("script"));
+          e.set("libraries", [...r] + "");
+          for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]);
+          e.set("callback", c + ".maps." + q);
+          a.src = `/gmaps-js/maps/api/js?` + e;   // 走本地 Caddy 反代，API Key 由服务端注入，不在前端暴露
+          d[q] = f;
+          a.onerror = () => h = n(Error(p + " could not load."));
+          a.nonce = m.querySelector("script[nonce]")?.nonce || "";
+          m.head.append(a)
+        }));
+      d[l] ? console.warn(p + " only loads once. Ignoring:", g) : d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n))
+    })({
+      // Key 已移至服务端 Caddy 反代注入，前端不再携带
+      v: "weekly",
+    });
+
+    // ===== 2. 初始化地图 + AdvancedMarkerElement =====
+    let arrowDiv;
+    let mapInstance;
+    let userMarker;
+    let latestUserLocation;
+    let cachedMapHeading = 0; // 缓存地图当前旋转角度，避免每次朝向事件都调用 getHeading()
+    // let debugMarker;
+    // let debugPinFactory;
+
+    async function initMap() {
+      const { Map } = await google.maps.importLibrary("maps");
+      const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+      // debugPinFactory = PinElement;
+
+      mapInstance = new Map(document.getElementById("map"), {
+        center: { lat: 23.742223, lng: 113.096745 }, // 默认坐标：校园中心（已限制可视区域为校园范围）
+        zoom: 18,
+        mapTypeId: "satellite",
+        mapId: "DEMO_MAP_ID",   // ⚠️ AdvancedMarkerElement 强制要求填写 mapId；使用 Google 官方公开占位 ID，避免暴露真实项目 Map ID
+        renderingType: google.maps.RenderingType.VECTOR, // 强制矢量渲染，旋转依赖此模式
+        heading: 180,   // 默认旋转180度
+        gestureHandling: "greedy"   // 单指即可拖动地图，不需要双指
+      });
+
+      // 地图旋转角度变化时才更新缓存，供 updateHeading 使用，避免频繁调用 getHeading()
+      cachedMapHeading = mapInstance.getHeading() || 0;
+      mapInstance.addListener("heading_changed", () => {
+        cachedMapHeading = mapInstance.getHeading() || 0;
+      });
+
+      // 构造函数里的 heading 初始值有时在矢量渲染就绪前被忽略，需在地图就绪后再次强制设置
+      const applyDefaultHeading = () => {
+        mapInstance.moveCamera({ heading: 180 });
+      };
+      applyDefaultHeading();
+      google.maps.event.addListenerOnce(mapInstance, "projection_changed", applyDefaultHeading);
+      google.maps.event.addListenerOnce(mapInstance, "idle", applyDefaultHeading);
+      // 兜底：部分情况下相机需在小幅交互后才接受角度设置，做一次极小幅度平移触发相机初始化
+      setTimeout(() => {
+        mapInstance.panBy(0, 0);
+        applyDefaultHeading();
+      }, 500);
+
+      // 自定义定位标记 DOM：默认显示圆点，开启朝向后切换为可旋转箭头
+      userMarker = new AdvancedMarkerElement({
+        map: mapInstance,
+        position: { lat: 39.9042, lng: 116.4074 },
+        content: createCircleMarkerContent()
+      });
+      if (latestUserLocation) updateUserLocation(latestUserLocation);
+
+      // 如果支持地理定位，自动定位到用户当前位置
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition((pos) => {
+          const latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          updateUserLocation(latLng);
+        }, (err) => console.warn("定位失败:", err), { enableHighAccuracy: true });
+      }
+
+      // 加载 JSON 中的全部地点标记
+      loadCampusMarkers(AdvancedMarkerElement);
+
+      // 默认不自动开启朝向，用户需点击"开启朝向"按钮
+    }
+
+    // 调试用：跳转地图到输入的经纬度并打一个红色标记，用于对照卫星影像手动核对坐标偏移
+    /*
+    function jumpToDebugCoord() {
+      const lat = parseFloat(document.getElementById("debug-lat").value);
+      const lng = parseFloat(document.getElementById("debug-lng").value);
+
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        alert("请输入有效的经纬度数字");
+        return;
+      }
+      if (!mapInstance || !debugPinFactory) {
+        alert("地图尚未加载完成，请稍后再试");
+        return;
+      }
+
+      const position = { lat, lng };
+      mapInstance.setCenter(position);
+      mapInstance.setZoom(19);
+
+      if (debugMarker) {
+        debugMarker.position = position;
+      } else {
+        const pin = new debugPinFactory({
+          background: "#EA4335",
+          borderColor: "#8E0000",
+          glyphColor: "#8E0000"
+        });
+        debugMarker = new google.maps.marker.AdvancedMarkerElement({
+          map: mapInstance,
+          position,
+          content: pin.element,
+          title: "调试坐标"
+        });
+      }
+    }
+    */
+
+    // 加载 JSON 中的全部地点，并在地图上添加标记
+    async function loadCampusMarkers(AdvancedMarkerElement) {
+      try {
+        const { PinElement } = await google.maps.importLibrary("marker");
+        const res = await fetch(`已加标签的地点.json?v=${Date.now()}`, { cache: "no-store" });
+        const data = await res.json();
+
+        data.features.forEach((feature) => {
+          const name = feature.properties?.name || "";
+          if (!name) return;
+
+          const [lng, lat] = feature.geometry.coordinates;
+          const match = name.match(/^(\d{2})(.*)$/);
+          const label = match ? match[1] : undefined;
+          const title = match ? (match[2] || name) : name;
+
+          const pin = new PinElement({
+            glyph: label,
+            background: "#FBBC04",
+            borderColor: "#B06000",
+            glyphColor: "#B06000"
+          });
+
+          // 图钉下方附加文字标签，让地点名称直接显示在地图上
+          const markerDiv = document.createElement("div");
+          markerDiv.style.display = "flex";
+          markerDiv.style.flexDirection = "column";
+          markerDiv.style.alignItems = "center";
+          markerDiv.appendChild(pin.element);
+
+          const labelDiv = document.createElement("div");
+          labelDiv.textContent = title;
+          labelDiv.style.marginTop = "2px";
+          labelDiv.style.padding = "1px 4px";
+          labelDiv.style.background = "rgba(255,255,255,0.9)";
+          labelDiv.style.borderRadius = "4px";
+          labelDiv.style.fontSize = "11px";
+          labelDiv.style.color = "#333";
+          labelDiv.style.whiteSpace = "nowrap";
+          labelDiv.style.boxShadow = "0 1px 3px rgba(0,0,0,0.3)";
+          markerDiv.appendChild(labelDiv);
+
+          new AdvancedMarkerElement({
+            map: mapInstance,
+            position: { lat, lng },
+            title: label ? `${label} ${title}` : title,
+            content: markerDiv
+          });
+        });
+      } catch (err) {
+        console.warn("加载校园地点标记失败:", err);
+      }
+    }
+
+    // 未开启朝向时，定位点显示为普通圆圈（无方向指示）
+    function createCircleMarkerContent() {
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 20 20">
+          <circle cx="10" cy="10" r="7" fill="#4285F4" stroke="white" stroke-width="2"/>
+        </svg>
+      `;
+      return div;
+    }
+
+    // 开启朝向后，定位点切换为可旋转箭头
+    function createArrowMarkerContent() {
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <svg width="32" height="32" viewBox="0 0 24 24"
+             style="transform: rotate(0deg); transform-origin: center; transition: transform 0.15s ease-out;">
+          <path d="M12 2 L19 21 L12 17 L5 21 Z" fill="#4285F4" stroke="white" stroke-width="1"/>
+        </svg>
+      `;
+      return div;
+    }
+
+    function updateUserLocation(latLng) {
+      latestUserLocation = latLng;
+      // 注意：不在这里自动 setCenter，否则每次 watchPosition 触发都会把用户正在
+      // 查看的视角强制拉回定位点。仅更新标记位置，居中操作交给"定位到我"按钮触发一次。
+      if (userMarker) userMarker.position = latLng;
+    }
+
+    function locateUser() {
+      const button = document.getElementById("locate-btn");
+
+      if (!navigator.geolocation) {
+        alert("当前浏览器不支持地理定位");
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "定位中...";
+
+      // 如果地图上已经显示过我的位置（此前定位/追踪已获取过坐标），
+      // 先立即把视角跳转过去，再发起新一轮定位请求；
+      // 若尚未显示过我的位置，则不要提前移动视角，等真正定位成功后再居中。
+      if (latestUserLocation && mapInstance) {
+        mapInstance.setCenter(latestUserLocation);
+      }
+
+      const onSuccess = (pos, isLowAccuracy) => {
+        const latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        updateUserLocation(latLng);
+        if (mapInstance) mapInstance.setCenter(latLng); // 仅点击"定位到我"时才主动居中
+        button.disabled = false;
+        button.textContent = "定位到我";
+        if (isLowAccuracy) {
+          alert("已切换为低精度定位（可能误差较大），如需更精确位置请在开阔地带或室外重试");
+        }
+      };
+
+      const onFinalError = (err) => {
+        button.disabled = false;
+        button.textContent = "定位到我";
+        const message = err.code === err.PERMISSION_DENIED
+          ? "请允许浏览器访问位置信息后重试"
+          : "无法获取当前位置，请稍后重试";
+        alert(message);
+      };
+
+      // 优先尝试高精度定位
+      navigator.geolocation.getCurrentPosition(
+        (pos) => onSuccess(pos, false),
+        (err) => {
+          // 高精度失败/超时后，降级为低精度重试（放宽误差半径以提高成功率）
+          navigator.geolocation.getCurrentPosition(
+            (pos) => onSuccess(pos, true),
+            onFinalError,
+            {
+              enableHighAccuracy: false,
+              timeout: 10000,
+              maximumAge: 30000
+            }
+          );
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    // ===== 3. 设备朝向监听（更新箭头旋转角度）=====
+    let orientationListenerActive = false;
+
+    // 朝向监听开启后，将定位点从圆圈切换为可旋转箭头
+    function activateArrowMarker() {
+      if (!userMarker) return;
+      arrowDiv = createArrowMarkerContent();
+      userMarker.content = arrowDiv;
+    }
+
+    function updateHeading(heading) {
+      if (!arrowDiv) return;
+      const svg = arrowDiv.querySelector("svg");
+      if (!svg) return;
+      // 地图整体旋转了 cachedMapHeading 度，屏幕上的朝向需要减去地图旋转角度才能与实际指向一致
+      const screenHeading = ((heading - cachedMapHeading) % 360 + 360) % 360;
+      svg.style.transform = `rotate(${screenHeading}deg)`;
+    }
+
+    function handleOrientation(event) {
+      let heading;
+      if (event.webkitCompassHeading !== undefined) {
+        // iOS Safari：已经是相对正北的角度
+        heading = event.webkitCompassHeading;
+      } else if (event.alpha !== null) {
+        // Android Chrome：需要转换
+        heading = 360 - event.alpha;
+      }
+      if (heading !== undefined) {
+        updateHeading(heading);
+      }
+    }
+
+    function requestOrientationPermission() {
+      if (orientationListenerActive) return; // 避免重复注册监听
+      if (typeof DeviceOrientationEvent !== "undefined" &&
+          typeof DeviceOrientationEvent.requestPermission === "function") {
+        // iOS 13+ 必须由用户手势触发请求
+        DeviceOrientationEvent.requestPermission()
+          .then(permissionState => {
+            if (permissionState === "granted") {
+              window.addEventListener("deviceorientation", handleOrientation, true);
+              orientationListenerActive = true;
+              activateArrowMarker();
+            } else {
+              alert("未授权访问设备朝向");
+            }
+          })
+          .catch(console.error);
+      } else if ("ondeviceorientationabsolute" in window) {
+        // Android Chrome
+        window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+        orientationListenerActive = true;
+        activateArrowMarker();
+      } else if (typeof DeviceOrientationEvent !== "undefined") {
+        // 其他浏览器
+        window.addEventListener("deviceorientation", handleOrientation, true);
+        orientationListenerActive = true;
+        activateArrowMarker();
+      } else {
+        alert("当前设备/浏览器不支持方向传感器");
+      }
+    }
+
+    // 页面加载后启动地图
+    initMap();
+
+    // 注册 Service Worker，使应用支持 PWA 安装与离线外壳缓存
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(console.error);
+      });
+    }
+  </script>
+
+</body>
+</html>

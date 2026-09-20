@@ -1,0 +1,13 @@
+services:
+  gdcm-map:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: gdcm-map:latest
+    container_name: gdcm-map
+    restart: unless-stopped
+    environment:
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+    ports:
+      # 仅绑定到宿主机回环地址，只允许宿主机上的 Caddy 反代访问，不直接暴露到公网
+      - "127.0.0.1:12856:80"

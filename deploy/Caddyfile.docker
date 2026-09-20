@@ -1,0 +1,116 @@
+{
+	# 容器内不需要自动 HTTPS（由宿主机 Caddy 统一处理证书）
+	auto_https off
+	admin off
+	order tile_bounds before replace
+	order replace before reverse_proxy
+}
+
+(allowed_bounds) {
+	tile_bounds {
+		min_lat 23.721844
+		max_lat 23.762603
+		min_lng 113.073930
+		max_lng 113.119559
+	}
+}
+
+:80 {
+	root * /srv/gdcm-map
+	file_server
+	header /index.html Cache-Control "no-store, no-cache, must-revalidate"
+	header / Cache-Control "no-store, no-cache, must-revalidate"
+	header /manifest.webmanifest Content-Type "application/manifest+json"
+
+	# 反代 Google Maps JavaScript API 加载入口，服务端注入 API Key
+	# 同时重写响应体中内嵌的绝对 URL，使卫星瓦片/静态资源等请求也走本地代理
+	handle /gmaps-js/* {
+		uri strip_prefix /gmaps-js
+		import allowed_bounds
+		rewrite * {http.request.uri.path}?{http.request.uri.query}&key={$GOOGLE_MAPS_API_KEY}
+		replace {
+			"https://maps.googleapis.com" "/gmaps-js"
+			"https://maps.gstatic.com" "/gmaps-static"
+			"https://khms0.googleapis.com" "/gmaps-tile/khms0"
+			"https://khms1.googleapis.com" "/gmaps-tile/khms1"
+			"https://khms2.googleapis.com" "/gmaps-tile/khms2"
+			"https://khms3.googleapis.com" "/gmaps-tile/khms3"
+			"https://mt0.google.com" "/gmaps-tile/mt0"
+			"https://mt1.google.com" "/gmaps-tile/mt1"
+			"https://mt2.google.com" "/gmaps-tile/mt2"
+			"https://mt3.google.com" "/gmaps-tile/mt3"
+		}
+		reverse_proxy https://maps.googleapis.com {
+			header_up Host maps.googleapis.com
+			header_up Accept-Encoding identity
+		}
+	}
+
+	# 反代 Google Maps 静态资源（字体、图标等）
+	handle /gmaps-static/* {
+		uri strip_prefix /gmaps-static
+		reverse_proxy https://maps.gstatic.com {
+			header_up Host maps.gstatic.com
+		}
+	}
+
+	# 反代卫星影像瓦片主机 khms0-3
+	handle /gmaps-tile/khms0/* {
+		uri strip_prefix /gmaps-tile/khms0
+		import allowed_bounds
+		reverse_proxy https://khms0.googleapis.com {
+			header_up Host khms0.googleapis.com
+		}
+	}
+	handle /gmaps-tile/khms1/* {
+		uri strip_prefix /gmaps-tile/khms1
+		import allowed_bounds
+		reverse_proxy https://khms1.googleapis.com {
+			header_up Host khms1.googleapis.com
+		}
+	}
+	handle /gmaps-tile/khms2/* {
+		uri strip_prefix /gmaps-tile/khms2
+		import allowed_bounds
+		reverse_proxy https://khms2.googleapis.com {
+			header_up Host khms2.googleapis.com
+		}
+	}
+	handle /gmaps-tile/khms3/* {
+		uri strip_prefix /gmaps-tile/khms3
+		import allowed_bounds
+		reverse_proxy https://khms3.googleapis.com {
+			header_up Host khms3.googleapis.com
+		}
+	}
+
+	# 反代路网/标签瓦片主机 mt0-3
+	handle /gmaps-tile/mt0/* {
+		uri strip_prefix /gmaps-tile/mt0
+		import allowed_bounds
+		reverse_proxy https://mt0.google.com {
+			header_up Host mt0.google.com
+		}
+	}
+	handle /gmaps-tile/mt1/* {
+		uri strip_prefix /gmaps-tile/mt1
+		import allowed_bounds
+		reverse_proxy https://mt1.google.com {
+			header_up Host mt1.google.com
+		}
+	}
+	handle /gmaps-tile/mt2/* {
+		uri strip_prefix /gmaps-tile/mt2
+		import allowed_bounds
+		reverse_proxy https://mt2.google.com {
+			header_up Host mt2.google.com
+		}
+	}
+	handle /gmaps-tile/mt3/* {
+		uri strip_prefix /gmaps-tile/mt3
+		import allowed_bounds
+		reverse_proxy https://mt3.google.com {
+			header_up Host mt3.google.com
+		}
+	}
+}
