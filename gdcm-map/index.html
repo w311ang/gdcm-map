@@ -389,19 +389,35 @@
       svg.style.transform = `rotate(${screenHeading}deg)`;
     }
 
+    // 完整的倾斜补偿罗盘朝向计算（W3C DeviceOrientation 规范附带公式）。
+    // 简单的 "360 - alpha" 只在手机水平放置（屏幕朝上平放）时准确；
+    // 实际使用中手机是竖着拿在手上查看地图，beta/gamma 不接近 0，
+    // 仅用 alpha 计算会在某些倾斜角度下导致朝向整体反向或错位，
+    // 这正是"箭头有时刚好相反"的根本原因，必须联合 alpha/beta/gamma 三轴计算。
+    function computeTiltCompensatedHeading(alpha, beta, gamma) {
+      const alphaRad = alpha * (Math.PI / 180);
+      const betaRad = beta * (Math.PI / 180);
+      const gammaRad = gamma * (Math.PI / 180);
+
+      const cA = Math.cos(alphaRad), sA = Math.sin(alphaRad);
+      const cB = Math.cos(betaRad), sB = Math.sin(betaRad);
+      const cG = Math.cos(gammaRad), sG = Math.sin(gammaRad);
+
+      const vx = -cA * sG - sA * sB * cG;
+      const vy = -sA * sG + cA * sB * cG;
+
+      let heading = Math.atan2(vx, vy) * (180 / Math.PI);
+      return (heading + 360) % 360;
+    }
+
     function handleOrientation(event) {
       let heading;
       if (event.webkitCompassHeading !== undefined) {
-        // iOS Safari：已经是相对正北的角度
+        // iOS Safari：系统已做倾斜补偿，直接是相对正北的角度
         heading = event.webkitCompassHeading;
-      } else if (event.alpha !== null) {
-        // Android Chrome：需要转换，并补偿当前屏幕朝向角度（screen.orientation.angle）。
-        // 若不做此补偿，手机在横屏/倒置竖屏等状态下会导致朝向计算整体偏移，
-        // 在 screen.orientation.angle 恰好为 180° 时会表现为箭头方向完全相反。
-        const screenAngle = (screen.orientation && typeof screen.orientation.angle === "number")
-          ? screen.orientation.angle
-          : (typeof window.orientation === "number" ? window.orientation : 0);
-        heading = ((360 - event.alpha - screenAngle) % 360 + 360) % 360;
+      } else if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
+        // Android Chrome：需要用 alpha/beta/gamma 三轴联合计算，做倾斜补偿
+        heading = computeTiltCompensatedHeading(event.alpha, event.beta, event.gamma);
       }
       if (heading !== undefined) {
         updateHeading(heading);
