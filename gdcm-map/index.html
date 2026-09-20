@@ -169,9 +169,16 @@
 
       // 如果支持地理定位，自动定位到用户当前位置
       if (navigator.geolocation) {
+        let hasCenteredOnFirstFix = false;
         navigator.geolocation.watchPosition((pos) => {
           const latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
           updateUserLocation(latLng);
+          // 冷启动/打开网页后首次拿到定位时，自动把视角转向定位点（等效于按一次"定位到我"）；
+          // 之后的持续更新不再自动居中，避免打断用户手动查看地图的操作。
+          if (!hasCenteredOnFirstFix) {
+            hasCenteredOnFirstFix = true;
+            if (mapInstance) mapInstance.setCenter(latLng);
+          }
         }, (err) => console.warn("定位失败:", err), { enableHighAccuracy: true });
       }
 
