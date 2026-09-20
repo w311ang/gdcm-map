@@ -1,0 +1,435 @@
+{
+  "features": [
+    {
+      "geometry": {
+        "coordinates": [
+          113.09667545572759,
+          23.742477113254026
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "04图书馆"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09411747809928,
+          23.743123267289008
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "18荷苑"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09387201246676,
+          23.74037055216623
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "24体育馆"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.0941071821735,
+          23.741657492807292
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "20柳苑"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09364861115235,
+          23.742406457993514
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "19桂苑"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09468658586475,
+          23.74463650016813
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "西门"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.0980780132852,
+          23.740008276524616
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "15大会堂"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09950365533147,
+          23.740545592938368
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "12轩君阁B栋"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09900546204217,
+          23.744193080320564
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "06梅苑"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09469723450333,
+          23.74105518617484
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "22西饭堂"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09832363781142,
+          23.742620499282253
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "09立德楼"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09942263519898,
+          23.743597046234225
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "菜鸟驿站"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09898580729755,
+          23.743526603940087
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "08榕苑"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09732627558766,
+          23.740496834164915
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "27博学楼"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09673493947308,
+          23.739809746976423
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "28裕华楼"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09589053844809,
+          23.743424930008604
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "16行知楼"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09583649184975,
+          23.74415580977163
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "01合正楼"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.0973844656905,
+          23.743493009047004
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "03精业楼"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09898885124792,
+          23.74290004446388
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "10东饭堂"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09823558121674,
+          23.740526545403053
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "14文逸楼"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09600542681673,
+          23.74059882708265
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "26博新楼"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09993133431946,
+          23.741452953952773
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "address": "中国广东省清远市清城区谢屋",
+        "name": "东区运动场"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09355782086887,
+          23.741083017388195
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "23桦苑"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09983631568996,
+          23.74014229206886
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "13轩君阁C栋"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09823538247774,
+          23.74337256989797
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "07竹苑"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09748199964314,
+          23.742995802220808
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "水上报告厅"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09506934839206,
+          23.74160076171731
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "21松苑"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09900073163288,
+          23.74032779376522
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "11轩君阁A栋"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09829332779593,
+          23.744181491507117
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "05兰苑"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09503487229054,
+          23.739886223660626
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "西区运动场"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.0950942318216,
+          23.743227379269072
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "17莲苑"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09737061969815,
+          23.74415367562983
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "02一德楼"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          113.09599598394672,
+          23.74122298392483
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "25博雅楼"
+      },
+      "type": "Feature"
+    }
+  ],
+  "type": "FeatureCollection"
+}
