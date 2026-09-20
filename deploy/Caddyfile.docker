@@ -18,8 +18,8 @@
 :80 {
 	root * /srv/gdcm-map
 	file_server
-	header /index.html Cache-Control "no-store, no-cache, must-revalidate"
-	header / Cache-Control "no-store, no-cache, must-revalidate"
+	header /index.html Cache-Control "no-cache, must-revalidate"
+	header / Cache-Control "no-cache, must-revalidate"
 	header /manifest.webmanifest Content-Type "application/manifest+json"
 
 	# 反代 Google Maps JavaScript API 加载入口，服务端注入 API Key
