@@ -395,8 +395,13 @@
         // iOS Safari：已经是相对正北的角度
         heading = event.webkitCompassHeading;
       } else if (event.alpha !== null) {
-        // Android Chrome：需要转换
-        heading = 360 - event.alpha;
+        // Android Chrome：需要转换，并补偿当前屏幕朝向角度（screen.orientation.angle）。
+        // 若不做此补偿，手机在横屏/倒置竖屏等状态下会导致朝向计算整体偏移，
+        // 在 screen.orientation.angle 恰好为 180° 时会表现为箭头方向完全相反。
+        const screenAngle = (screen.orientation && typeof screen.orientation.angle === "number")
+          ? screen.orientation.angle
+          : (typeof window.orientation === "number" ? window.orientation : 0);
+        heading = ((360 - event.alpha - screenAngle) % 360 + 360) % 360;
       }
       if (heading !== undefined) {
         updateHeading(heading);
