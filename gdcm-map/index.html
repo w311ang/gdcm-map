@@ -413,11 +413,18 @@
     function handleOrientation(event) {
       let heading;
       if (event.webkitCompassHeading !== undefined) {
-        // iOS Safari：系统已做倾斜补偿，直接是相对正北的角度
+        // iOS Safari：系统已同时做了倾斜补偿和屏幕旋转补偿，直接是相对正北的角度
         heading = event.webkitCompassHeading;
       } else if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
-        // Android Chrome：需要用 alpha/beta/gamma 三轴联合计算，做倾斜补偿
-        heading = computeTiltCompensatedHeading(event.alpha, event.beta, event.gamma);
+        // Android Chrome：alpha/beta/gamma 是相对设备物理机身的坐标系，不随屏幕内容旋转而改变；
+        // 先做倾斜补偿得到"设备物理顶部"的朝向，再减去 screen.orientation.angle 修正为
+        // "屏幕当前显示的正上方"的朝向——如果不做这一步，在系统自动旋转为横屏/倒置显示时，
+        // 二者会相差 90°/180°，导致箭头指向与实际朝向不符。
+        const deviceHeading = computeTiltCompensatedHeading(event.alpha, event.beta, event.gamma);
+        const screenAngle = (screen.orientation && typeof screen.orientation.angle === "number")
+          ? screen.orientation.angle
+          : (typeof window.orientation === "number" ? window.orientation : 0);
+        heading = ((deviceHeading - screenAngle) % 360 + 360) % 360;
       }
       if (heading !== undefined) {
         updateHeading(heading);
