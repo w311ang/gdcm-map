@@ -82,6 +82,10 @@
 
   <button id="locate-btn" class="map-control" onclick="locateUser()">定位到我</button>
   <button id="orientation-btn" class="map-control" onclick="requestOrientationPermission()">开启朝向</button>
+  <!-- 临时调试面板：排查 fallback 指南针完全不动的问题，确认后可删除 -->
+  <div id="heading-debug" style="position:absolute;top:56px;left:12px;z-index:10;background:rgba(0,0,0,0.7);color:#0f0;padding:6px 10px;border-radius:4px;font-size:12px;font-family:monospace;display:none;">
+    heading: --
+  </div>
   <!--
   <div id="debug-panel">
     <label>纬度 lat: <input id="debug-lat" type="text" placeholder="23.7400"></label>
@@ -389,6 +393,11 @@
     }
 
     function updateHeading(heading) {
+      const debugEl = document.getElementById("heading-debug");
+      if (debugEl) {
+        debugEl.style.display = "block";
+        debugEl.textContent = "heading: " + heading.toFixed(1) + "°";
+      }
       if (!arrowDiv) return;
       const svg = arrowDiv.querySelector("svg");
       if (!svg) return;
@@ -422,13 +431,29 @@
     // 普通浏览器（含 Android）朝向兜底：仅做基础方向读取（手机水平放置时准确，
     // 竖拿时会有偏差），精度受限于浏览器本身。
     function handleFallbackOrientation(event) {
-      if (typeof event.alpha !== "number") return;
+      if (typeof event.alpha !== "number") {
+        const debugEl = document.getElementById("heading-debug");
+        if (debugEl) {
+          debugEl.style.display = "block";
+          debugEl.textContent = "事件已触发，但 alpha 为 " + event.alpha;
+        }
+        return;
+      }
       updateHeading((360 - event.alpha) % 360);
     }
 
     function startFallbackCompass() {
       const eventName = "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation";
+      console.log("[compass] fallback using event:", eventName);
       window.addEventListener(eventName, handleFallbackOrientation);
+      // 3 秒内若一次事件都没收到，说明浏览器根本没有触发该事件（而非收到了但数据无效）
+      setTimeout(() => {
+        const debugEl = document.getElementById("heading-debug");
+        if (debugEl && debugEl.textContent === "heading: --") {
+          debugEl.style.display = "block";
+          debugEl.textContent = "3秒内未收到任何 " + eventName + " 事件";
+        }
+      }, 3000);
     }
 
     function requestOrientationPermission() {
