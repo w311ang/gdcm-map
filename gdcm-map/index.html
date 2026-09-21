@@ -401,8 +401,34 @@
     // Android 原生朝向：通过 Capacitor 自定义插件（CompassPlugin）读取系统 ROTATION_VECTOR
     // 传感器融合结果（与原生 App 同源，已由系统做过陀螺仪+加速度计+磁力计融合与滤波），
     // 精度和稳定性均优于浏览器 DeviceOrientationEvent，从根本解决网页端抖动/反向问题。
+    //
+    // 重要：本页面是远程加载的纯静态页面，从未经过 @capacitor/core 的 npm 打包流程。
+    // Android 原生启动时自动注入的 native-bridge.js 只是底层"JS↔原生"通信通道，
+    // 它本身并不创建 window.Capacitor.Plugins 或 registerPlugin —— 这两者是
+    // @capacitor/core 这个 JS 包的职责，平时靠打包工具随应用一起打包进页面，
+    // 而我们的远程页面从未加载这个包，因此必须像加载 kompas 那样手动用 <script> 标签
+    // 引入 @capacitor/core 的 UMD 版本（版本号需与 app 内置的 @capacitor/core 版本一致，
+    // 目前为 6.2.2），加载完成后才能使用 window.Capacitor.registerPlugin()。
+    let capacitorCoreLoadPromise;
+    function loadCapacitorCore() {
+      if (capacitorCoreLoadPromise) return capacitorCoreLoadPromise;
+      capacitorCoreLoadPromise = new Promise((resolve, reject) => {
+        if (typeof window.Capacitor.registerPlugin === "function") {
+          resolve();
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://unpkg.com/@capacitor/core@6.2.2/dist/capacitor.js";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("加载 @capacitor/core 脚本失败"));
+        document.head.appendChild(script);
+      });
+      return capacitorCoreLoadPromise;
+    }
+
     async function startNativeAndroidCompass() {
       try {
+        await loadCapacitorCore();
         const Compass = window.Capacitor.registerPlugin("Compass");
         await Compass.addListener("heading", data => {
           console.log("[compass] heading event:", data.heading);
