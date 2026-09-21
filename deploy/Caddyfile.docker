@@ -20,6 +20,10 @@
 	file_server
 	header /index.html Cache-Control "no-cache, must-revalidate"
 	header / Cache-Control "no-cache, must-revalidate"
+	# Service Worker 规范建议其文件本身不应被长期缓存，否则浏览器/CDN 缓存旧版本会导致
+	# 每次发布新版本后，用户端最长要等到缓存过期才能拿到更新（曾因 Cloudflare 边缘默认缓存
+	# 该文件 4 小时而实际踩过这个坑）
+	header /service-worker.js Cache-Control "no-cache, must-revalidate"
 	header /manifest.webmanifest Content-Type "application/manifest+json"
 
 	# 反代 Google Maps JavaScript API 加载入口，服务端注入 API Key
