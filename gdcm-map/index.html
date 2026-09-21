@@ -372,11 +372,6 @@
 
     // ===== 3. 设备朝向监听（更新箭头旋转角度）=====
     let orientationListenerActive = false;
-    let kompasInstance;
-    // 罗盘朝向计算改用现成的 kompas 库（github.com/pirxpilot/kompas），而非手写实现：
-    // 它内置了对 alpha/beta/gamma 的倾斜补偿算法（手机竖拿时也能正确计算方向），
-    // 并且已在社区中被广泛验证，比自行实现更可靠，避免箭头计算出错或抽搐。
-    const kompasModulePromise = import("https://esm.sh/kompas");
 
     // 朝向监听开启后，将定位点从圆圈切换为可旋转箭头
     function activateArrowMarker() {
@@ -394,15 +389,53 @@
       svg.style.transform = `rotate(${screenHeading}deg)`;
     }
 
-    async function startKompasWatch() {
-      const { default: kompas } = await kompasModulePromise;
-      kompasInstance = kompas();
-      kompasInstance.on("heading", updateHeading);
-      kompasInstance.watch();
+    // Android 原生朝向：通过 Capacitor 自定义插件（CompassPlugin）读取系统 ROTATION_VECTOR
+    // 传感器融合结果（与原生 App 同源，已由系统做过陀螺仪+加速度计+磁力计融合与滤波），
+    // 精度和稳定性均优于浏览器 DeviceOrientationEvent，从根本解决网页端抖动/反向问题。
+    async function startNativeAndroidCompass() {
+      const Compass = window.Capacitor.registerPlugin("Compass");
+      await Compass.addListener("heading", data => updateHeading(data.heading));
+      await Compass.start();
+    }
+
+    // iOS Safari 朝向：直接使用系统提供的 webkitCompassHeading（Core Location 已做磁北校准），
+    // 无需再自行做倾斜补偿计算。
+    function handleIOSOrientation(event) {
+      if (typeof event.webkitCompassHeading === "number") {
+        updateHeading(event.webkitCompassHeading);
+      }
+    }
+
+    function startIOSSafariCompass() {
+      window.addEventListener("deviceorientation", handleIOSOrientation);
+    }
+
+    // 非 Capacitor 环境下的普通 Android 浏览器兜底：仅做基础方向读取（手机水平放置时准确，
+    // 竖拿时会有偏差），精度受限于浏览器本身，无法访问系统级传感器融合结果。
+    function handleFallbackOrientation(event) {
+      if (typeof event.alpha !== "number") return;
+      updateHeading((360 - event.alpha) % 360);
+    }
+
+    function startFallbackCompass() {
+      const eventName = "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation";
+      window.addEventListener(eventName, handleFallbackOrientation);
     }
 
     function requestOrientationPermission() {
       if (orientationListenerActive) return; // 避免重复注册监听
+
+      const isNativeAndroid = window.Capacitor &&
+        window.Capacitor.isNativePlatform() &&
+        window.Capacitor.getPlatform() === "android";
+
+      if (isNativeAndroid) {
+        orientationListenerActive = true;
+        activateArrowMarker();
+        startNativeAndroidCompass();
+        return;
+      }
+
       if (typeof DeviceOrientationEvent !== "undefined" &&
           typeof DeviceOrientationEvent.requestPermission === "function") {
         // iOS 13+ 必须由用户手势触发请求
@@ -411,17 +444,17 @@
             if (permissionState === "granted") {
               orientationListenerActive = true;
               activateArrowMarker();
-              startKompasWatch();
+              startIOSSafariCompass();
             } else {
               alert("未授权访问设备朝向");
             }
           })
           .catch(console.error);
       } else if (typeof DeviceOrientationEvent !== "undefined" || "ondeviceorientationabsolute" in window) {
-        // Android Chrome / 其他支持设备方向的浏览器
+        // 普通 Android 浏览器（未通过 Capacitor 安装）
         orientationListenerActive = true;
         activateArrowMarker();
-        startKompasWatch();
+        startFallbackCompass();
       } else {
         alert("当前设备/浏览器不支持方向传感器");
       }

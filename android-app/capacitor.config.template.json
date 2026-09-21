@@ -1,0 +1,9 @@
+{
+  "appId": "xyz.z543998.gdcmmap",
+  "appName": "校园地图",
+  "webDir": "www",
+  "server": {
+    "url": "__CAPACITOR_SERVER_URL__",
+    "cleartext": false
+  }
+}
