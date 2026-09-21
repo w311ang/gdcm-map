@@ -82,6 +82,10 @@
 
   <button id="locate-btn" class="map-control" onclick="locateUser()">定位到我</button>
   <button id="orientation-btn" class="map-control" onclick="requestOrientationPermission()">开启朝向</button>
+  <!-- 临时调试面板：显示指南针原始读数，排查完箭头不转的问题后可删除 -->
+  <div id="heading-debug" style="position:absolute;top:56px;left:12px;z-index:10;background:rgba(0,0,0,0.7);color:#0f0;padding:6px 10px;border-radius:4px;font-size:12px;font-family:monospace;display:none;">
+    heading: --
+  </div>
   <!--
   <div id="debug-panel">
     <label>纬度 lat: <input id="debug-lat" type="text" placeholder="23.7400"></label>
@@ -381,6 +385,11 @@
     }
 
     function updateHeading(heading) {
+      const debugEl = document.getElementById("heading-debug");
+      if (debugEl) {
+        debugEl.style.display = "block";
+        debugEl.textContent = "heading: " + heading.toFixed(1) + "°";
+      }
       if (!arrowDiv) return;
       const svg = arrowDiv.querySelector("svg");
       if (!svg) return;
@@ -393,9 +402,18 @@
     // 传感器融合结果（与原生 App 同源，已由系统做过陀螺仪+加速度计+磁力计融合与滤波），
     // 精度和稳定性均优于浏览器 DeviceOrientationEvent，从根本解决网页端抖动/反向问题。
     async function startNativeAndroidCompass() {
-      const Compass = window.Capacitor.registerPlugin("Compass");
-      await Compass.addListener("heading", data => updateHeading(data.heading));
-      await Compass.start();
+      try {
+        const Compass = window.Capacitor.registerPlugin("Compass");
+        await Compass.addListener("heading", data => {
+          console.log("[compass] heading event:", data.heading);
+          updateHeading(data.heading);
+        });
+        await Compass.start();
+        console.log("[compass] native compass started successfully");
+      } catch (err) {
+        console.error("[compass] failed to start native compass:", err);
+        alert("原生指南针启动失败：" + (err && err.message ? err.message : err));
+      }
     }
 
     // iOS Safari 朝向：直接使用系统提供的 webkitCompassHeading（Core Location 已做磁北校准），
