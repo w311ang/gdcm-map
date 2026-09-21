@@ -126,6 +126,14 @@
     let userMarker;
     let latestUserLocation;
     let cachedMapHeading = 0; // 缓存地图当前旋转角度，避免每次朝向事件都调用 getHeading()
+    // 箭头当前实际应用的 CSS rotate 角度（连续值，不做 0-360 归一化）。
+    // 若每次都用归一化后的 0-360 度数直接赋给 rotate()，当角度跨越 0/360 边界时
+    // （例如从 359° 变化到 1°），CSS 数值上是从 359 直接跳到 1，浏览器会按数值最短路径
+    // 插值旋转，也就是倒转 358 度的一大圈，而不是我们想要的正向 2 度小转动。
+    // 通过维护一个不做归一化的累计角度，每次只在其基础上加上"最短方向的增量"，
+    // 使得 rotate() 的数值始终连续变化，从而让 CSS transition 自然走最短路径，
+    // 不会在边界处出现反向大幅度回转的视觉跳变。
+    let continuousScreenHeading = null;
     // let debugMarker;
     // let debugPinFactory;
 
@@ -394,8 +402,18 @@
       const svg = arrowDiv.querySelector("svg");
       if (!svg) return;
       // 地图整体旋转了 cachedMapHeading 度，屏幕上的朝向需要减去地图旋转角度才能与实际指向一致
-      const screenHeading = ((heading - cachedMapHeading) % 360 + 360) % 360;
-      svg.style.transform = `rotate(${screenHeading}deg)`;
+      const targetHeading = ((heading - cachedMapHeading) % 360 + 360) % 360;
+      if (continuousScreenHeading === null) {
+        continuousScreenHeading = targetHeading;
+      } else {
+        // 计算从当前累计角度（先归一化到 0-360 便于比较）到目标角度的最短带符号增量，
+        // 范围限定在 [-180, 180)，避免大幅度反向旋转
+        const currentMod = ((continuousScreenHeading % 360) + 360) % 360;
+        let delta = targetHeading - currentMod;
+        delta = ((delta + 180) % 360 + 360) % 360 - 180;
+        continuousScreenHeading += delta;
+      }
+      svg.style.transform = `rotate(${continuousScreenHeading}deg)`;
     }
 
     // Android 原生朝向：通过 Capacitor 自定义插件（CompassPlugin）读取系统 ROTATION_VECTOR
