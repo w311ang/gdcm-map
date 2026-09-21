@@ -1,14 +1,3 @@
 .env
 node_modules/
 *.log
-
-# Android (Capacitor) 构建产物，不纳入版本控制
-android-app/android/.gradle/
-android-app/android/build/
-android-app/android/app/build/
-android-app/android/local.properties
-android-app/android/.idea/
-android-app/android/app/src/main/assets/public/
-android-app/android/app/src/main/assets/capacitor.config.json
-# 由 capacitor.config.template.json 在构建时生成，包含真实域名，不提交
-android-app/capacitor.config.json

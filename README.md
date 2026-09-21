@@ -12,7 +12,6 @@
 - `gdcm-map/`：前端静态资源（`index.html`、`manifest.webmanifest`、`service-worker.js`、图标）
 - `caddy-tilebounds/`：自定义 Go 编写的 Caddy HTTP 处理模块源码，用于按瓦片坐标做地理区域校验
 - `deploy/`：Docker 部署相关文件
-- `android-app/`：Capacitor 封装的 Android 原生壳应用（见下方「Android 原生 App」章节）
 
 ## 镜像构建（GitHub Actions）
 
@@ -62,44 +61,4 @@ tile_bounds {
 ## PWA 安装说明
 
 - 首次安装后如修改了 `manifest.webmanifest`，Android 端需要卸载重装 WebAPK 才能生效（系统对已安装 PWA 的 manifest 有缓存）。
-
-## Android 原生 App（`android-app/`）
-
-网页版指南针受限于浏览器 `DeviceOrientationEvent`（无系统级传感器融合，精度低、易抖动/反向）。
-`android-app/` 用 [Capacitor](https://capacitorjs.com/) 把线上网页封装成 Android 原生 App，
-额外注入一个自定义原生插件 `CompassPlugin`（见 `android-app/android/app/src/main/java/xyz/z543998/gdcmmap/compass/CompassPlugin.kt`），
-直接读取系统 `TYPE_ROTATION_VECTOR` 传感器（与原生地图/导航 App 同源、经系统融合与滤波），网页侧检测到运行在该原生壳内时会优先使用它；
-iOS 仍然通过 Safari 自带的 `webkitCompassHeading` 获取方向，未使用 Capacitor 封装。
-
-**架构说明**：`android-app/capacitor.config.json` 中的 `server.url` 指向线上地址，
-即原生壳只是加了一层带指南针插件的 WebView，实际页面内容仍从服务器实时加载，不在 APK 内打包快照，
-因此现网页更新后无需重新发 APK。**已知风险**：Capacitor 官方文档指出 `server.url` 远程加载模式下，
-原生插件桥接在部分场景下可能失效（社区反馈多发生在页面内发生整页跳转之后）；本应用是单页应用，
-不会发生整页导航，理论上不受影响，但建议实际安装测试后再确认指南针功能正常。
-
-真实域名不写入仓库：`android-app/capacitor.config.json` 已加入 `.gitignore`，实际提交的是
-`android-app/capacitor.config.template.json`（内含占位符 `__CAPACITOR_SERVER_URL__`）。
-CI 构建时从仓库 Secret `MAP_SERVER_URL` 读取真实地址并生成正式配置（见下方「构建 APK」）。
-
-### 构建 APK
-
-推送到 `main` 分支（涉及 `android-app/**`）会自动触发 `.github/workflows/android-build.yml`，
-用 GitHub Actions 编译 **未签名的 Debug APK**，可在该次工作流运行的 Artifacts 里下载 `gdcm-map-debug-apk`，
-下载后直接在手机上"允许安装未知来源应用"后安装即可（仅供内部测试/自用，未走应用商店签名与上架流程）。
-
-**首次使用前，需要在仓库 Settings → Secrets and variables → Actions 中添加一个 Secret**：
-`MAP_SERVER_URL`，值为你的线上地址（例如 `https://map.example.com`）。未配置时 CI 会直接报错终止，
-提醒你补上，不会静默用空值构建。
-
-如需本地构建（需要 Node.js 22+、JDK 17+、Android SDK）：
-
-```bash
-cd android-app
-npm install
-sed "s#__CAPACITOR_SERVER_URL__#https://你的真实域名#" capacitor.config.template.json > capacitor.config.json
-npx cap sync android
-cd android
-./gradlew assembleDebug
-# 产物：android-app/android/app/build/outputs/apk/debug/app-debug.apk
-```
 

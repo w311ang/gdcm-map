@@ -8,7 +8,6 @@ on:
       - "caddy-tilebounds/**"
       - "deploy/Dockerfile"
       - "deploy/Caddyfile.docker"
-      - "android-app/package.json" # 触发 @capacitor/core 版本一致性校验
       - ".github/workflows/docker-build.yml"
   workflow_dispatch: {}
 
@@ -17,32 +16,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  verify-capacitor-core-version:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Check vendored @capacitor/core version matches android-app/package.json
-        run: |
-          set -euo pipefail
-          PACKAGE_VERSION=$(node -p "require('./android-app/package.json').dependencies['@capacitor/core']" | sed 's/^[\^~]//')
-          VENDOR_FILE=$(ls gdcm-map/vendor/capacitor-core-*.js 2>/dev/null | head -n1 || true)
-          if [ -z "$VENDOR_FILE" ]; then
-            echo "::error::未找到 gdcm-map/vendor/capacitor-core-*.js，请检查 vendor 目录"
-            exit 1
-          fi
-          VENDOR_VERSION=$(basename "$VENDOR_FILE" | sed -E 's/^capacitor-core-(.+)\.js$/\1/')
-          echo "android-app/package.json 中 @capacitor/core 版本：$PACKAGE_VERSION"
-          echo "vendor 文件声明版本：$VENDOR_VERSION"
-          if [ "$PACKAGE_VERSION" != "$VENDOR_VERSION" ]; then
-            echo "::error::版本不一致！android-app 使用 @capacitor/core@$PACKAGE_VERSION，但 vendor 文件是 capacitor-core-$VENDOR_VERSION.js。请参考 gdcm-map/vendor/README.md 更新 vendor 文件、index.html 与 service-worker.js 中的引用路径。"
-            exit 1
-          fi
-          echo "版本一致，校验通过。"
-
   build-and-push:
-    needs: verify-capacitor-core-version
     runs-on: ubuntu-latest
     permissions:
       contents: read
