@@ -1,9 +1,9 @@
 // 极简 Service Worker：仅为实现 PWA 可安装/离线外壳缓存，
 // 不缓存 Google Maps 反代相关请求（瓦片、JS、静态资源），
 // 避免地图内容被过期/离线数据污染。
-// @capacitor/core（经 unpkg 加载，仅原生 Android App 内需要）属于版本锁定的静态脚本，
+// @capacitor/core（vendor 到本仓库，见 vendor/ 目录说明）属于版本锁定的静态脚本，
 // 内容不会变化，缓存它能加快该脚本的二次加载。
-const CACHE_NAME = "campus-map-shell-v3";
+const CACHE_NAME = "campus-map-shell-v4";
 const SHELL_ASSETS = [
   "./",
   "./index.html",
@@ -11,7 +11,7 @@ const SHELL_ASSETS = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-512-maskable.png",
-  "https://unpkg.com/@capacitor/core@6.2.2/dist/capacitor.js"
+  "./vendor/capacitor-core-6.2.2.js"
 ];
 
 self.addEventListener("install", (event) => {
