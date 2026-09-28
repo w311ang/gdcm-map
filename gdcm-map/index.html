@@ -419,9 +419,17 @@
     // iOS Safari 朝向：直接使用系统提供的 webkitCompassHeading（Core Location 已做磁北校准），
     // 无需再自行做倾斜补偿计算。
     function handleIOSOrientation(event) {
-      if (typeof event.webkitCompassHeading === "number") {
-        updateHeading(event.webkitCompassHeading);
+      // 以字段是否存在区分平台：iOS 罗盘未校准时值可能暂为 null，但字段始终存在
+      if ("webkitCompassHeading" in event) {
+        if (typeof event.webkitCompassHeading === "number") {
+          updateHeading(event.webkitCompassHeading);
+        }
+        return;
       }
+      // 新版 Android Chrome 也提供 requestPermission，但事件里没有 webkitCompassHeading，
+      // 此时改用 alpha 兜底，否则箭头永远不会转动
+      window.removeEventListener("deviceorientation", handleIOSOrientation);
+      startFallbackCompass();
     }
 
     function startIOSSafariCompass() {
