@@ -134,3 +134,60 @@ test("routes static content through the asset binding", async () => {
   assert.equal(await response.text(), "static asset");
   assert.equal(assetRequest.url, "https://map.example/index.html");
 });
+
+const RPC_PATH = "/gmaps-js/$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/GetViewportInfo";
+
+test("forwards Maps RPC POST with body and server-side key", async () => {
+  let upstream;
+  const response = await handleRequest(
+    new Request(`https://map.example${RPC_PATH}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json+protobuf",
+        "x-goog-api-key": "attacker",
+        cookie: "session=secret"
+      },
+      body: "[[1,2]]"
+    }),
+    { GOOGLE_MAPS_API_KEY: "server-key" },
+    async (url, init) => {
+      upstream = { url: String(url), init, body: new TextDecoder().decode(init.body) };
+      return new Response("[]", { headers: { "content-type": "application/json+protobuf" } });
+    }
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "[]");
+  assert.equal(upstream.init.method, "POST");
+  assert.equal(upstream.body, "[[1,2]]");
+  assert.equal(upstream.init.headers.get("x-goog-api-key"), "server-key");
+  assert.equal(upstream.init.headers.get("cookie"), null);
+  const url = new URL(upstream.url);
+  assert.equal(url.hostname, "maps.googleapis.com");
+  assert.equal(url.pathname, RPC_PATH.slice("/gmaps-js".length));
+  assert.equal(url.searchParams.get("key"), "server-key");
+});
+
+test("only allows POST on the Maps RPC path and GET/HEAD elsewhere", async () => {
+  const env = { GOOGLE_MAPS_API_KEY: "server-key" };
+  const neverFetch = async () => assert.fail("must not reach upstream");
+
+  const rpcGet = await handleRequest(new Request(`https://map.example${RPC_PATH}`), env, neverFetch);
+  assert.equal(rpcGet.status, 405);
+  assert.equal(rpcGet.headers.get("allow"), "POST");
+
+  const otherPost = await handleRequest(
+    new Request("https://map.example/gmaps-js/maps/api/js", { method: "POST", body: "x" }),
+    env,
+    neverFetch
+  );
+  assert.equal(otherPost.status, 405);
+  assert.equal(otherPost.headers.get("allow"), "GET, HEAD");
+
+  const otherRpcService = await handleRequest(
+    new Request("https://map.example/gmaps-js/$rpc/google.internal.other.Service/Method", { method: "POST", body: "x" }),
+    env,
+    neverFetch
+  );
+  assert.equal(otherRpcService.status, 405);
+});

@@ -27,6 +27,9 @@ const PROXY_PREFIX_BY_HOST = {
   )
 };
 
+// Maps JS 内部 gRPC-web 接口（如 GetViewportInfo 获取影像版权提供方）只接受 POST
+const MAPS_RPC_PREFIX = "/gmaps-js/$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/";
+
 const TILE_COORDS_RE = /!1i(\d+)!2i(\d+)!3i(\d+)/;
 const VECTOR_TILE_PATH_RE = /\/vt(?:\/|$)/;
 
@@ -148,10 +151,12 @@ export async function handleRequest(request, env, fetcher = fetch) {
     return new Response("Not found", { status: 404 });
   }
 
-  if (request.method !== "GET" && request.method !== "HEAD") {
+  const isMapsRpc = requestUrl.pathname.startsWith(MAPS_RPC_PREFIX);
+  const allowedMethods = isMapsRpc ? ["POST"] : ["GET", "HEAD"];
+  if (!allowedMethods.includes(request.method)) {
     return new Response("Method not allowed", {
       status: 405,
-      headers: { Allow: "GET, HEAD" }
+      headers: { Allow: allowedMethods.join(", ") }
     });
   }
 
@@ -177,6 +182,10 @@ export async function handleRequest(request, env, fetcher = fetch) {
   }
 
   const headers = new Headers(request.headers);
+  if (isMapsRpc) {
+    // RPC 通过请求头携带 key，同样替换为服务端配置的 key
+    headers.set("x-goog-api-key", env.GOOGLE_MAPS_API_KEY);
+  }
   headers.delete("host");
   headers.delete("cookie");
   headers.delete("authorization");
@@ -189,6 +198,7 @@ export async function handleRequest(request, env, fetcher = fetch) {
     upstreamResponse = await fetcher(upstreamUrl, {
       method: request.method,
       headers,
+      body: isMapsRpc ? await request.arrayBuffer() : undefined,
       redirect: "follow"
     });
   } catch (error) {

@@ -21,6 +21,8 @@
     #map {
       width: 100%;
       height: 100vh;
+      /* 移动端 100vh 包含地址栏高度，会把底部版权栏挤出可见区域 */
+      height: 100dvh;
     }
     .map-control {
       position: absolute;
