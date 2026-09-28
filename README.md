@@ -13,7 +13,7 @@
 - `src/index.js`：Cloudflare Worker 路由、Google Maps 反代和瓦片区域校验
 - `wrangler.toml`：Worker 与静态资源配置
 - `test/`：Worker 逻辑的 Node.js 单元测试
-- `deploy/`、`caddy-tilebounds/`：旧 Docker/Caddy 部署文件，Worker 切换完成前可作为回退方案；不再由默认工作流构建发布
+- Git 分支 `docker-mode`：Cloudflare Workers 迁移前的完整 Docker/Caddy 部署版本
 
 ## 部署到 Cloudflare Workers
 
