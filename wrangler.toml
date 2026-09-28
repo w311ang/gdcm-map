@@ -1,0 +1,9 @@
+name = "gdcm-map"
+main = "src/index.js"
+compatibility_date = "2026-09-28"
+workers_dev = true
+
+[assets]
+directory = "./gdcm-map"
+binding = "ASSETS"
+run_worker_first = ["/gmaps-js/*", "/gmaps-static/*", "/gmaps-tile/*"]
