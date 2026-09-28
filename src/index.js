@@ -89,7 +89,8 @@ function getUpstream(url) {
     return {
       hostname: "maps.googleapis.com",
       pathname: pathname.slice("/gmaps-js".length),
-      isMapsBootstrap: true
+      isMapsJavaScript: true,
+      isTile: VECTOR_TILE_PATH_RE.test(pathname)
     };
   }
 
@@ -154,7 +155,7 @@ export async function handleRequest(request, env, fetcher = fetch) {
     });
   }
 
-  if (upstream.isTile && VECTOR_TILE_PATH_RE.test(upstream.pathname)) {
+  if (upstream.isTile) {
     const coordinates = parseTileCoordinates(requestUrl);
     if (!isTileAllowed(coordinates)) {
       return forbidden(coordinates
@@ -196,7 +197,10 @@ export async function handleRequest(request, env, fetcher = fetch) {
     return new Response("Google Maps upstream request failed", { status: 502 });
   }
 
-  if (!upstream.isMapsBootstrap || request.method === "HEAD" ||
+  const contentType = upstreamResponse.headers.get("content-type") || "";
+  if (!upstream.isMapsJavaScript ||
+      !/^application\/(?:javascript|x-javascript)|^text\/javascript/i.test(contentType) ||
+      request.method === "HEAD" ||
       !upstreamResponse.body) {
     return upstreamResponse;
   }

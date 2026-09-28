@@ -47,6 +47,36 @@ test("blocks vector tile requests outside the allowed region before upstream fet
   assert.equal(fetched, false);
 });
 
+test("blocks Maps API vector tiles outside the allowed region before upstream fetch", async () => {
+  let fetched = false;
+  const response = await handleRequest(
+    new Request("https://map.example/gmaps-js/maps/vt/?x=1&y=1&z=2"),
+    { GOOGLE_MAPS_API_KEY: "test-secret" },
+    async () => {
+      fetched = true;
+      return new Response("unexpected");
+    }
+  );
+
+  assert.equal(response.status, 403);
+  assert.equal(fetched, false);
+});
+
+test("passes Maps API satellite tile bytes through unchanged", async () => {
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+  const coords = tileAt(23.74, 113.1, 18);
+  const response = await handleRequest(
+    new Request(`https://map.example/gmaps-js/maps/vt/?x=${coords.x}&y=${coords.y}&z=${coords.z}`),
+    { GOOGLE_MAPS_API_KEY: "test-secret" },
+    async () => new Response(jpeg, {
+      headers: { "Content-Type": "image/jpeg" }
+    })
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()), jpeg);
+});
+
 test("injects the Maps key upstream and rewrites bootstrap URLs", async () => {
   let requestedUrl;
   let upstreamHeaders;
