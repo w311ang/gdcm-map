@@ -77,6 +77,23 @@ test("passes Maps API satellite tile bytes through unchanged", async () => {
   assert.deepEqual(new Uint8Array(await response.arrayBuffer()), jpeg);
 });
 
+test("requests satellite tiles upstream at scale=4", async () => {
+  const coords = tileAt(23.74, 113.1, 18);
+  const tileQuery = `x=${coords.x}&y=${coords.y}&z=${coords.z}`;
+  const upstreamUrls = [];
+  const fetcher = async (url) => {
+    upstreamUrls.push(new URL(String(url)));
+    return new Response("tile", { headers: { "Content-Type": "image/jpeg" } });
+  };
+  const env = { GOOGLE_MAPS_API_KEY: "test-secret" };
+
+  await handleRequest(new Request(`https://map.example/gmaps-js/maps/vt/?${tileQuery}&scale=2`), env, fetcher);
+  await handleRequest(new Request(`https://map.example/gmaps-js/maps/vt/?${tileQuery}`), env, fetcher);
+
+  assert.equal(upstreamUrls[0].searchParams.get("scale"), "4");
+  assert.equal(upstreamUrls[1].searchParams.has("scale"), false);
+});
+
 test("injects the Maps key upstream and rewrites bootstrap URLs", async () => {
   let requestedUrl;
   let upstreamHeaders;

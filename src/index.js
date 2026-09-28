@@ -172,6 +172,10 @@ export async function handleRequest(request, env, fetcher = fetch) {
   const upstreamUrl = new URL(`https://${upstream.hostname}`);
   upstreamUrl.pathname = upstream.pathname;
   upstreamUrl.search = requestUrl.search;
+  // Google 最高支持 scale=4（1024px），统一请求最高清晰度
+  if (upstream.isTile && upstreamUrl.searchParams.has("scale")) {
+    upstreamUrl.searchParams.set("scale", "4");
+  }
 
   if (upstream.hostname === "maps.googleapis.com") {
     if (!env.GOOGLE_MAPS_API_KEY) {

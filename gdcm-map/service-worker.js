@@ -1,6 +1,6 @@
 // 极简 Service Worker：对所有 GET 请求（含 Google Maps 反代的 JS、配置、瓦片）
 // 使用 stale-while-revalidate 缓存，实现 PWA 可安装与离线访问。
-const CACHE_NAME = "campus-map-shell-v7";
+const CACHE_NAME = "campus-map-shell-v8";
 const SHELL_ASSETS = [
   "./",
   "./index.html",
