@@ -1,7 +1,6 @@
-// 极简 Service Worker：实现 PWA 可安装/离线外壳缓存（stale-while-revalidate），
-// 不缓存 Google Maps 反代相关请求（瓦片、JS、静态资源），
-// 避免地图内容被过期/离线数据污染。
-const CACHE_NAME = "campus-map-shell-v6";
+// 极简 Service Worker：对所有 GET 请求（含 Google Maps 反代的 JS、配置、瓦片）
+// 使用 stale-while-revalidate 缓存，实现 PWA 可安装与离线访问。
+const CACHE_NAME = "campus-map-shell-v7";
 const SHELL_ASSETS = [
   "./",
   "./index.html",
@@ -28,16 +27,6 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-
-  // 反代路径（Google Maps JS/静态资源/瓦片）一律直接走网络，不经过 Service Worker 缓存，
-  // 保证地图数据始终最新，且不会意外把 API Key 注入逻辑绕过。
-  if (url.pathname.startsWith("/gmaps-js/") ||
-      url.pathname.startsWith("/gmaps-static/") ||
-      url.pathname.startsWith("/gmaps-tile/")) {
-    return; // 不调用 respondWith，浏览器按默认网络请求处理
-  }
-
   // Cache API 只能存 GET 请求
   if (event.request.method !== "GET") return;
 

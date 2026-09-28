@@ -500,6 +500,13 @@
         navigator.serviceWorker.register("service-worker.js").catch(console.error);
       });
     }
+
+    // 申请持久化存储，避免空间紧张时浏览器自动清除离线外壳缓存；是否批准由浏览器决定
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persisted()
+        .then((persisted) => persisted || navigator.storage.persist())
+        .catch(console.error);
+    }
   </script>
 
 </body>
