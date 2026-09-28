@@ -241,7 +241,7 @@
     async function loadCampusMarkers(AdvancedMarkerElement) {
       try {
         const { PinElement } = await google.maps.importLibrary("marker");
-        const res = await fetch(`已加标签的地点.json?v=${Date.now()}`, { cache: "no-store" });
+        const res = await fetch("已加标签的地点.json");
         const data = await res.json();
 
         data.features.forEach((feature) => {
